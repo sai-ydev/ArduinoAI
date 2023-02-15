@@ -131,9 +131,7 @@
       height: 81px;
     }
 
-    .quaternion {
-      font-size: 10px;
-    }
+    
 
     #color-picker-container {
       display: flex;
@@ -215,15 +213,6 @@
       <img src="Logo-Arduino-Pro-inline.svg" style="position: inherit;padding-right: 0px;filter: invert(100%);float: right; grid-column: 3; width: 80%; margin-top: 8.5%;" />
     </div>
 
-    <div class="square widget" id="3d">
-      <div class="label">&#128230; Quaternion Rotation</div>
-      <div class="quaternion" id="canvasDigits">
-        <span id="xQuaternion">x: -</span>
-        <span id="yQuaternion">y: -</span>
-        <span id="zQuaternion">z: -</span>
-      </div>
-    </div>
-
     <div class="double widget">
       <div class="label">&#128640; Accelerometer</div>
       <div id="accelerometer" class="doublegraph"></div>
@@ -235,32 +224,20 @@
       <div id="gyroscope" class="graph"></div>
     </div>
 
-    <div class="square widget">
-      <div class="label">&#128161; RGB LED control</div>
-      <div id="color-picker-container" class="graph"></div>
-    </div>
+    
+
+   
 
     <div class="short widget">
-      <div class="label">&#127777; Temperature - </div>
-      <div class="label" id="temperature-value"></div>
-      <div class="label">&deg;C</div>
-      <div class="shortgraph" id="temperature"></div>
-    </div>
-
-    <div class="short widget">
-      <div class="label">&#128167; Humidity - </div>
-      <div class="label" id="humidity-value"></div>
-      <div class="label">%</div>
-      <div class="shortgraph" id="humidity"></div>
+      <div class="label">&#128167; Patient Status - </div>
+      <div class="label" id="patient_status-value"></div>
+      <div class="shortgraph" id="patient_status"></div>
 
     </div>
 
-    <div class="short widget">
-      <div class="label">&#9925; Pressure - </div>
-      <div class="label" id="pressure-value"></div>
-      <div class="label">kPa</div>
-      <div class="shortgraph" id="pressure"></div>
-    </div>
+
+
+    
 
     <div class="short widget">
       <div class="label">&#127968; Indoor Air Quality - </div>
@@ -289,7 +266,7 @@
 <script type="text/javascript">
   /*
   Demo showing simple dashboard of Arduino Nicla Sense ME (from the BLE Sense version)
-  
+
   Based on: https://developers.google.com/web/updates/2015/07/interact-with-ble-devices-on-the-web
   For earlier versions of Windows and Linux, you still have to go to chrome://flags/#enable-experimental-web-platform-features,
   enable the highlighted flag, and restart Chrome for now.
@@ -299,27 +276,16 @@
 
   var NiclaSenseME =
   {
-    temperature:
+    
+    patient_status:
     {
-      uuid: '19b10000-2001-537e-4f6c-d104768a1214',
-      properties: ['BLERead'],
-      structure: ['Float32'],
-      data: { temperature: [] }
-    },
-    humidity:
-    {
-      uuid: '19b10000-3001-537e-4f6c-d104768a1214',
-      properties: ['BLERead'],
+      uuid: '19b10000-3101-537e-4f6c-d104768a1214',
+      properties: ['BLENotify'],
       structure: ['Uint8'],
-      data: { humidity: [] }
+      data: { patient_status: [] }
     },
-    pressure:
-    {
-      uuid: '19b10000-4001-537e-4f6c-d104768a1214',
-      properties: ['BLERead'],
-      structure: ['Float32'],
-      data: { pressure: [] }
-    },
+    
+    
     accelerometer:
     {
       uuid: '19b10000-5001-537e-4f6c-d104768a1214',
@@ -334,22 +300,7 @@
       structure: ['Float32', 'Float32', 'Float32'],
       data: { 'x': [], 'y': [], 'z': [] }
     },
-    led: {
-      uuid: '19b10000-8001-537e-4f6c-d104768a1214',
-      properties: ['BLEWrite'],
-      structure: ['Uint8', 'Uint8', 'Uint8'],
-      data: { 'R': [], 'G': [], 'B': [] },
-      writeBusy: false, // we need to track this to avoid 'GATT operation in progress' errors
-      writeValue: null
-    },
-    quaternion: {
-      uuid: '19b10000-7001-537e-4f6c-d104768a1214',
-      properties: ['BLENotify'],
-      structure: ['Float32', 'Float32', 'Float32', 'Float32'],
-      data: { 'x': [], 'y': [], 'z': [], 'w': [] },
-      writeBusy: false, // we need to track this to avoid 'GATT operation in progress' errors
-      writeValue: null
-    },
+    
     bsec:
     {
       uuid: '19b10000-9001-537e-4f6c-d104768a1214',
@@ -383,7 +334,7 @@
   const BLEstatus = document.getElementById('bluetooth');
 
   snack('IMPORTANT - first upload the sketch to your Arduino Nicla Sense ME &nbsp;&nbsp; <a href="https://create.arduino.cc/editor/FT-CONTENT/333e2e07-ecc4-414c-bf08-005b611ddd75/preview">OPEN</a>', 1)
-  
+
   if ("bluetooth" in navigator) {
     pairButton.addEventListener('click', function (event) {
       connect();
@@ -462,7 +413,7 @@
     msg('Characteristics configured');
     snack('Connected.', 0);
 
-    initColorPicker();
+   
   }
 
   function handleIncoming(sensor, dataReceived) {
@@ -512,56 +463,25 @@
     snack('Device ' + device.name + ' has been disconnected.', 1);
     msg("Disconnected");
 
-    // The board's LED will go red once it detects it has been disconnected
-    ledLight.color.setRGB(255,0,0);
-    ledMaterial.color.setRGB(255,0,0);
+    
   }
 
-  function BLEwriteTo(sensor) {
-    if (NiclaSenseME[sensor].writeBusy) return; // dropping writes when one is in progress instead of queuing as LED is non-critical / realtime
-    NiclaSenseME[sensor].writeBusy = true; // Ensure no write happens when GATT operation in progress
-    NiclaSenseME[sensor].characteristic.writeValue(NiclaSenseME[sensor].writeValue)
-      .then(_ => {
-        NiclaSenseME[sensor].writeBusy = false;
-      })
-      .catch(error => {
-        console.log(error);
-      });
-  }
+  
+
+  //function sendMessage() {
+   //   var request = new XMLHttpRequest();
+     // var bsec = NiclaSenseME['bsec'].data['bsec'].latest();
+     // request.open("GET", "https://api.thingspeak.com/update?api_key=5CM02RFXYV0DOXDI&field1=" + bsec);
+     // request.send();
+   // }
+
+   // setInterval(sendMessage, 60000);
 
 </script>
 
 <script>
 
-  function initColorPicker() {
-    //Default color blue
-    var rgb_values = Uint8Array.of(0, 0, 255);
-    NiclaSenseME['led'].writeValue = rgb_values;
-    BLEwriteTo('led');
-    ledMaterial.color.setRGB(0,0,255);
-    ledLight.color.setRGB(0,0,255);
-
-    NiclaSenseME.led.colorPicker = new iro.ColorPicker("#color-picker-container", {
-      width: 150,
-      color: "rgb(0, 0, 255)",
-      borderWidth: 1,
-      borderColor: "#fff",
-      sliderHeight: 6,
-      sliderMargin: 6
-    });
-    // RGB Color Picker
-    NiclaSenseME.led.colorPicker.on('color:change', updateModelLed);
-    function updateModelLed(color) {
-      ledLight.color.setHex("0x" + color.hexString.substring(1, 7));
-      ledMaterial.color.set(color.hexString)   // where r, g, and b are 0 to 1
-      var rgb_values = Uint8Array.of(color.rgb.r, color.rgb.g, color.rgb.b);
-      NiclaSenseME['led'].writeValue = rgb_values;
-      BLEwriteTo('led');
-    }
-
-    
-  }
-
+  
   // Graphing
   const colors = ["#FF355E", "#FD5B20", "#FF6037", "#FF9966", "#FF9933", "#FFCC33", "#FFFF66", "#FFFF66", "#CCFF00", "#66FF66", "#AAF0D1", "#50BFE6", "#FF6EFF", "#EE34D2", "#FF00CC", "#FF00CC"];
   var colorIndex = 0;
@@ -600,66 +520,7 @@
   }
 
   // 3d model
-  var renderer = new THREE.WebGLRenderer();
-  var scene = new THREE.Scene();
-  var camera = new THREE.PerspectiveCamera(75, 1, 1, 10000);
-
-  function init3D() {
-    var container = document.getElementById('3d');
-    var loader = new THREE.GLTFLoader();
-    var canvasDigits = document.getElementById('canvasDigits');
-    scene.background = new THREE.Color(0x58585A);
-    renderer.setSize(177, 177);
-
-    renderer.setPixelRatio(4);
-
-    container.insertBefore(renderer.domElement, canvasDigits);
-    renderer.domElement.style.margin = "9px";
-    loader.load('models/niclaSenseME.glb',
-      // called when the Arduinio model is loaded
-      function (gltf) {
-        // Model
-        arduinoModel = gltf.scene;
-        scene.add(arduinoModel);
-
-        // LED
-        var geometry = new THREE.BoxGeometry(1, 1, 1);
-        ledMaterial = new THREE.MeshBasicMaterial({ color: 0x111111 });
-        ledObject = new THREE.Mesh(geometry, ledMaterial);
-        ledObject.position.set(9, -10, -1);
-        
-        ledLight = new THREE.PointLight(0x111111, 3, 40);
-        ledLight.color.setRGB(0,255,0);
-        ledLight.position.set(9, -10, -1.2);
-        
-        ledMaterial.color.setRGB(0,255,0);
-
-        arduinoModel.add(ledObject);
-        arduinoModel.add(ledLight);
-
-        arduinoModel.rotation.x = 90 * (Math.PI/180);  // Show the bottom side of the board by default
-        
-        var sphereSize = 1;
-
-        // Light
-        const color = 0xFFFFFF;
-        const intensity = 1;
-        const light = new THREE.DirectionalLight(color, intensity);
-        light.position.set(-20, 100, -10);
-        light.target.position.set(0, 0, 0);
-        scene.add(light);
-        scene.add(light.target);
-        var hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 1);
-        scene.add(hemiLight);
-
-        // Camera
-        camera.position.set(0, 25, 0);
-        camera.rotation.y = Math.PI; // 180
-        camera.lookAt(new THREE.Vector3(0, 0, 0));
-        renderer.render(scene, camera);
-      }
-    );
-  }
+ 
 
   function colorBars(sensor) {
     // Color + light
@@ -697,29 +558,7 @@
     if (!Number.isNaN(value)) { div.innerHTML = Math.round(value * 10) / 10; };
   }
 
-  function update3d(sensor) {
   
-    // Get the quaternion values
-    var x = NiclaSenseME['quaternion'].data.x.latest();
-    var y = NiclaSenseME['quaternion'].data.y.latest();
-    var z = NiclaSenseME['quaternion'].data.z.latest();
-    var w = NiclaSenseME['quaternion'].data.w.latest();
-
-    // Construct the quaternion object with the values and apply that to the 3D model
-    const quaternion = new THREE.Quaternion(x, y, z, w);
-    quaternion.normalize();
-    arduinoModel.setRotationFromQuaternion(quaternion);
-
-    renderer.render(scene, camera);
-
-    // Euler conversion, show the degrees below the 3D model
-    var rotation = new THREE.Euler().setFromQuaternion(quaternion, 'XYZ');
-
-    document.getElementById('xQuaternion').innerHTML = "x: " + Math.round(rotation.x * 180 / Math.PI + 180);
-    document.getElementById('yQuaternion').innerHTML = "y: " + Math.round(rotation.y * 180 / Math.PI + 180);
-    document.getElementById('zQuaternion').innerHTML = "z: " + Math.round(rotation.z * 180 / Math.PI + 180);
-  }
-
   function bytes() {
     if (bytesReceived > bytesPrevious) {
       bytesPrevious = bytesReceived;
@@ -740,15 +579,14 @@
     if (skip_frame == false) { // TODO update with fuction to iterate object with viz function as a property
       updateViz('accelerometer', [graph]);
       updateViz('gyroscope', [graph]);
-      updateViz('temperature', [digit, graph]);
-      updateViz('humidity', [digit, graph]);
-      updateViz('pressure', [digit, graph]);
+      
+      updateViz('patient_status', [digit, graph]);
+      
       updateViz('bsec', [digit, graph]);
       updateViz('co2', [digit, graph]);
       updateViz('gas', [digit, graph]);
-      updateViz('quaternion', [update3d]);
 
-      //bytes();  //Get the total amount of bytes received
+      bytes();  //Get the total amount of bytes received
 
       skip_frame = true; // render alternate frames = 30fps
     } else { skip_frame = false; }
@@ -757,14 +595,14 @@
 
   initGraph('gyroscope');
   initGraph('accelerometer');
-  initGraph('temperature');
-  initGraph('humidity');
-  initGraph('pressure');
+  
+  initGraph('patient_status');
+  
   initGraph('bsec');
   initGraph('co2');
   initGraph('gas');
 
-  init3D();
+  
   requestAnimationFrame(draw);
 
 </script>
